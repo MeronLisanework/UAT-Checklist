@@ -1,15 +1,22 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ECIMS.Web.Models;
 
 namespace ECIMS.Web.Controllers;
 
+[Authorize]
 public class HomeController : Controller
 {
-    public IActionResult Index()
+  public IActionResult Index()
+{
+    if (User.Identity?.IsAuthenticated == true && User.IsInRole(ECIMS.Web.Models.Enums.RoleNames.FunctionalConsultant))
     {
-        return View();
+        return RedirectToAction("Index", "Consultant");
     }
+
+    return View();
+}
 
     public IActionResult Privacy()
     {

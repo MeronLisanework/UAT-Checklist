@@ -1,0 +1,190 @@
+@using ECIMS.Web.Models.Enums
+@model ECIMS.Web.Models.ViewModels.AttemptExecuteViewModel
+@{
+    ViewData["Title"] = $"Checklist - {Model.ProjectName}";
+    Layout = "_ChecklistLayout";
+}
+
+<header class="cl-header">
+    <div class="cl-header-left">
+        <img src="~/images/logo.png" alt="RED Cloud" />
+        <div>
+            <div class="cl-header-title">Customer Acceptance Checklist</div>
+            <div class="cl-header-sub">For Normal Voucher System and Retail (NVS POS)</div>
+        </div>
+    </div>
+    <div class="cl-header-right">
+        <div>
+            <div class="cl-progress-label">Overall progress</div>
+            <div class="cl-progress-value"><span id="overallCount">@Model.CompletedItems</span> of @Model.TotalItems items</div>
+        </div>
+        <button type="submit" form="checklistForm" class="btn-primary-lg">Save and exit</button>
+    </div>
+</header>
+
+<div class="cl-meta">
+    <div><span class="meta-label">Customer name</span><span class="meta-value">@Model.CustomerName</span></div>
+    <div><span class="meta-label">Branch</span><span class="meta-value">@Model.BranchName</span></div>
+    <div><span class="meta-label">Project Manager Name</span><span class="meta-value">@Model.ProjectManagerName</span></div>
+    <div><span class="meta-label">Start Date</span><span class="meta-value">@Model.StartDate.ToString("MM/dd/yyyy")</span></div>
+</div>
+
+<div class="cl-body">
+    <nav class="cl-sidebar" id="sidebarNav">
+        @for (var s = 0; s < Model.Sections.Count; s++)
+        {
+            var sec = Model.Sections[s];
+            var completed = sec.Items.Count(i => i.PassStatus != PassStatus.Pending);
+            <div class="sidebar-section @(s == 0 ? "active" : "")" data-section-index="@s" onclick="setActiveSection(@s)">
+                <span>@sec.SectionName</span>
+                <span class="sidebar-count sidebar-count-@s">@completed/@sec.Items.Count</span>
+            </div>
+        }
+    </nav>
+
+    <main class="cl-main">
+        <form id="checklistForm" asp-controller="Consultant" asp-action="SaveChecklist" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="attemptId" value="@Model.AttemptId" />
+
+            @for (var s = 0; s < Model.Sections.Count; s++)
+            {
+                var sec = Model.Sections[s];
+                <div class="checklist-section-panel @(s == 0 ? "active" : "")" data-section-index="@s">
+                    <div class="cl-section-title-row">
+                        <h2>@sec.SectionName</h2>
+                        <span class="cl-section-count">@sec.Items.Count(i => i.PassStatus != PassStatus.Pending)/@sec.Items.Count</span>
+                    </div>
+
+                    @for (var i = 0; i < sec.Items.Count; i++)
+                    {
+                        var item = sec.Items[i];
+                        var idx = s * 1000 + i;
+                        <div class="cl-item">
+                            <input type="hidden" name="items[@idx].ResultId" value="@item.ResultId" />
+                            <div class="cl-item-top">
+                                <div class="cl-item-desc">@item.TestDescription</div>
+                                <div class="cl-status-group">
+                                    <input type="radio" id="pass_@item.ResultId" name="items[@idx].PassStatus" value="@((int)PassStatus.Pass)" checked="@(item.PassStatus == PassStatus.Pass)" />
+                                    <label class="opt-pass" for="pass_@item.ResultId">Pass</label>
+                                    <input type="radio" id="fail_@item.ResultId" name="items[@idx].PassStatus" value="@((int)PassStatus.Fail)" checked="@(item.PassStatus == PassStatus.Fail)" />
+                                    <label class="opt-fail" for="fail_@item.ResultId">Fail</label>
+                                    <input type="radio" id="na_@item.ResultId" name="items[@idx].PassStatus" value="@((int)PassStatus.NA)" checked="@(item.PassStatus == PassStatus.NA)" />
+                                    <label class="opt-na" for="na_@item.ResultId">N/A</label>
+                                </div>
+                            </div>
+
+                            <div class="comment-required-label">Comment Required</div>
+                            <textarea class="cl-comment" name="items[@idx].Comment" rows="1" placeholder="Add a comment...">@item.Comment</textarea>
+
+                            <label class="evidence-trigger" for="file_@item.ResultId">
+                                &#128206; Attach Evidence
+                            </label>
+                            <input type="file" id="file_@item.ResultId" name="items[@idx].EvidenceFile" accept=".jpg,.jpeg,.png,.pdf" style="display:none" onchange="showFileName(this)" />
+                            <span class="evidence-filename"></span>
+                            @if (!string.IsNullOrEmpty(item.EvidencePath))
+                            {
+                                <a class="evidence-link" href="@item.EvidencePath" target="_blank">View current evidence</a>
+                            }
+                        </div>
+                    }
+
+                    <div class="cl-nav-row">
+                        <button type="button" class="cl-nav-btn" onclick="setActiveSection(@(s - 1))" @(s == 0 ? "disabled" : "")>&larr; Previous Section</button>
+                        <button type="button" class="cl-nav-btn-primary" onclick="setActiveSection(@(s + 1))" @(s == Model.Sections.Count - 1 ? "disabled" : "")>Next Section &rarr;</button>
+                    </div>
+                </div>
+            }
+        </form>
+    </main>
+
+    @for (var s = 0; s < Model.Sections.Count; s++)
+    {
+        var sec = Model.Sections[s];
+        <div class="cl-dots @(s == 0 ? "active" : "")" data-section-index="@s">
+            @foreach (var item in sec.Items)
+            {
+                var dotClass = item.PassStatus == PassStatus.Pass ? "dot-pass" : item.PassStatus == PassStatus.Fail ? "dot-fail" : item.PassStatus == PassStatus.NA ? "dot-na" : "";
+                <span class="dot @dotClass" data-resultid="@item.ResultId"></span>
+            }
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+    var passVal = "@((int)PassStatus.Pass)";
+    var failVal = "@((int)PassStatus.Fail)";
+
+    function setActiveSection(idx) {
+        var panels = document.querySelectorAll('.checklist-section-panel');
+        if (idx < 0 || idx >= panels.length) return;
+        panels.forEach(function (p) { p.classList.toggle('active', p.dataset.sectionIndex == idx); });
+        document.querySelectorAll('.sidebar-section').forEach(function (s) { s.classList.toggle('active', s.dataset.sectionIndex == idx); });
+        document.querySelectorAll('.cl-dots').forEach(function (d) { d.classList.toggle('active', d.dataset.sectionIndex == idx); });
+    }
+
+    function showFileName(input) {
+        var span = input.parentElement.querySelector('.evidence-filename');
+        span.textContent = input.files.length ? input.files[0].name : '';
+    }
+
+    function updateAll() {
+        var overallTotal = 0;
+        var overallCompleted = 0;
+
+        document.querySelectorAll('.checklist-section-panel').forEach(function (panel) {
+            var items = panel.querySelectorAll('.cl-item');
+            var completed = 0;
+
+            items.forEach(function (item) {
+                var checked = item.querySelector('input[type="radio"]:checked');
+                var textarea = item.querySelector('.cl-comment');
+                var label = item.querySelector('.comment-required-label');
+
+                if (checked) completed++;
+
+                var isFail = checked && checked.value === failVal;
+                var isEmpty = textarea.value.trim().length === 0;
+                var showRequired = isFail && isEmpty;
+
+                label.style.display = showRequired ? 'block' : 'none';
+                textarea.classList.toggle('error', showRequired);
+                textarea.required = isFail;
+            });
+
+            var idx = panel.dataset.sectionIndex;
+            var sidebarCount = document.querySelector('.sidebar-count-' + idx);
+            if (sidebarCount) sidebarCount.textContent = completed + '/' + items.length;
+
+            var sectionCount = panel.querySelector('.cl-section-count');
+            if (sectionCount) sectionCount.textContent = completed + '/' + items.length;
+
+            var dotsPanel = document.querySelector('.cl-dots[data-section-index="' + idx + '"]');
+            if (dotsPanel) {
+                var dots = dotsPanel.querySelectorAll('.dot');
+                items.forEach(function (item, i) {
+                    var checked = item.querySelector('input[type="radio"]:checked');
+                    var dot = dots[i];
+                    dot.classList.remove('dot-pass', 'dot-fail', 'dot-na');
+                    if (checked) {
+                        if (checked.value === passVal) dot.classList.add('dot-pass');
+                        else if (checked.value === failVal) dot.classList.add('dot-fail');
+                        else dot.classList.add('dot-na');
+                    }
+                });
+            }
+
+            overallTotal += items.length;
+            overallCompleted += completed;
+        });
+
+        document.getElementById('overallCount').textContent = overallCompleted;
+    }
+
+
+
+    document.getElementById('checklistForm').addEventListener('change', updateAll);
+    document.getElementById('checklistForm').addEventListener('input', updateAll);
+    updateAll();
+</script>
+}

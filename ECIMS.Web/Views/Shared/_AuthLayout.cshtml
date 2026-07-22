@@ -1,0 +1,87 @@
+@using System.Security.Claims
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ECIMS</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="app-body">
+    @{
+        var fullName = User.FindFirst("FullName")?.Value ?? User.Identity?.Name ?? "";
+        var roleName = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+        var initials = string.Join("", fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => char.ToUpper(w[0])));
+    }
+    <header class="app-topbar">
+        <div class="topbar-left">
+            <img src="~/images/logo.png" alt="RED Cloud" class="topbar-logo" />
+            <span class="topbar-title">@ViewData["Title"]</span>
+        </div>
+       <div class="topbar-right">
+    <div class="notif-menu">
+        <button class="icon-btn" type="button" aria-label="Notifications" onclick="toggleDropdown('notifDropdown')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="#4b4b4b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M13.7 21a2 2 0 01-3.4 0" stroke="#4b4b4b" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <div class="dropdown-panel notif-panel" id="notifDropdown">
+            <div class="dropdown-header-title">Notifications</div>
+            <div class="notif-empty">You're all caught up — no new notifications.</div>
+        </div>
+    </div>
+
+    <div class="user-menu">
+        <button class="user-menu-trigger" type="button" onclick="toggleDropdown('userDropdown')">
+            <span class="avatar-circle">@initials</span>
+            <span class="user-info">
+                <span class="user-name">@fullName</span>
+                <span class="user-role">@roleName</span>
+            </span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 9l6 6 6-6" stroke="#4b4b4b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        <div class="dropdown-panel user-panel" id="userDropdown">
+            <div class="dropdown-user-header">
+                <span class="avatar-circle avatar-lg">@initials</span>
+                <div>
+                    <div class="user-name">@fullName</div>
+                    <div class="user-role">@roleName</div>
+                </div>
+            </div>
+            <div class="dropdown-divider"></div>
+            <form asp-controller="Account" asp-action="Logout" method="post">
+                <button type="submit" class="dropdown-item dropdown-item-danger">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Logout
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleDropdown(id) {
+        const target = document.getElementById(id);
+        const isOpen = target.classList.contains('open');
+        document.querySelectorAll('.dropdown-panel.open').forEach(p => p.classList.remove('open'));
+        if (!isOpen) target.classList.add('open');
+    }
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.user-menu') && !e.target.closest('.notif-menu')) {
+            document.querySelectorAll('.dropdown-panel.open').forEach(p => p.classList.remove('open'));
+        }
+    });
+</script>
+    </header>
+
+    <main class="app-main">
+        @RenderBody()
+    </main>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

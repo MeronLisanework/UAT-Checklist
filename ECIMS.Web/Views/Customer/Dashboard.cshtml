@@ -1,0 +1,80 @@
+@{
+    ViewData["Title"] = "Customer Dashboard";
+    Layout = "_AuthLayout";
+}
+
+@if (Model.ShowReviewBanner)
+{
+    <div class="review-banner">
+        <div class="review-banner-left">
+            <span class="review-banner-icon">&#128203;</span>
+            <div>
+                <div class="review-banner-title">Checklist ready for your review</div>
+                <div class="review-banner-sub">@(Model.BannerSentDate.HasValue ? $"sent {(DateTime.UtcNow - Model.BannerSentDate.Value).Hours} hours ago" : "")</div>
+            </div>
+        </div>
+        <a asp-controller="Customer" asp-action="Checklist" asp-route-id="@Model.CurrentAttemptId" class="btn-primary-lg">Review now</a>
+    </div>
+}
+
+<div class="cust-section">
+    <h3>Your Project</h3>
+    <div class="cust-project-card">
+        <div class="cust-project-top">
+            <div>
+                <div class="cust-project-title">Customer acceptance checklist</div>
+                <div class="cust-project-sub">@Model.BranchName</div>
+            </div>
+            <span class="status-pill @Model.StatusCssClass">@Model.StatusLabel</span>
+        </div>
+
+        <div class="cust-project-info">
+            <div class="cust-info-box">
+                <div class="cust-info-label">Project Manager</div>
+                <div class="cust-info-value">@Model.ProjectManagerName</div>
+            </div>
+            <div class="cust-info-box">
+                <div class="cust-info-label">Functional Consultant</div>
+                <div class="cust-info-value">@Model.ConsultantName</div>
+            </div>
+            <div class="cust-info-box">
+                <div class="cust-info-label">Start Date</div>
+                <div class="cust-info-value">@Model.StartDate.ToString("MM/dd/yy")</div>
+            </div>
+        </div>
+
+        @if (Model.ProgressTotal > 0)
+        {
+            <div class="cust-progress-row">
+                <span>Overall Progress</span>
+                <span>@Model.ProgressCompleted of @Model.ProgressTotal items</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" style="width:@(Model.ProgressCompleted * 100 / Model.ProgressTotal)%"></div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="cust-section">
+    <h3>Checklist History</h3>
+    <table class="cust-history-table">
+        <thead>
+            <tr>
+                <th>Attempt</th>
+                <th>Status</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Model.History)
+            {
+                <tr class="cust-history-row" onclick="location.href='@Url.Action("Checklist", "Customer", new { id = row.AttemptId })'">
+                    <td>Attempt @row.AttemptNumber</td>
+                    <td><span class="status-pill @row.StatusCssClass">@row.StatusLabel</span></td>
+                    <td>@row.Date.ToString("MMM d, yyyy")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

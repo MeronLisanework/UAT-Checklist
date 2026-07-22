@@ -1,0 +1,119 @@
+@model ECIMS.Web.Models.ViewModels.ProjectDetailsViewModel
+@{
+    ViewData["Title"] = Model.CustomerName;
+    Layout = "_AuthLayout";
+}
+
+<div class="dashboard-container">
+    <a asp-controller="Consultant" asp-action="Index" class="back-link-lg">&larr; Back to My Projects</a>
+
+    <div class="detail-header">
+        <div>
+            <h1>@Model.CustomerName</h1>
+            <p class="text-muted">@Model.BranchName &middot; @Model.ProjectName</p>
+        </div>
+        <span class="status-badge @Model.StatusCssClass">@Model.StatusLabel</span>
+    </div>
+
+    <div class="meta-cards">
+        <div class="meta-card">
+            <span class="meta-label">Project Manager</span>
+            <span class="meta-value">@Model.ProjectManagerName</span>
+        </div>
+        <div class="meta-card">
+            <span class="meta-label">Customer Contact</span>
+            <span class="meta-value">@Model.CustomerContactName</span>
+        </div>
+        <div class="meta-card">
+            <span class="meta-label">Start Date</span>
+            <span class="meta-value">@Model.StartDate.ToString("MM/dd/yyyy")</span>
+        </div>
+        <div class="meta-card">
+            <span class="meta-label">Attempt</span>
+            <span class="meta-value">@(Model.CurrentAttemptNumber?.ToString() ?? "-")</span>
+        </div>
+    </div>
+
+    @if (Model.ProgressTotal > 0)
+    {
+        <div class="progress-section">
+            <div class="progress-section-top">
+                <span>Overall Progress</span>
+                <span>@Model.ProgressCompleted of @Model.ProgressTotal items</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" style="width:@(Model.ProgressTotal == 0 ? 0 : (Model.ProgressCompleted * 100 / Model.ProgressTotal))%"></div>
+            </div>
+        </div>
+    }
+
+    @if (Model.Decline is not null)
+    {
+        <div class="decline-banner">
+            <div>
+                <strong>Declined on @Model.Decline.DeclinedDate.ToString("MMM d")</strong>.
+                The customer flagged @Model.Decline.FlaggedCount item@(Model.Decline.FlaggedCount == 1 ? "" : "s")
+                and changed @Model.Decline.ChangedCount result@(Model.Decline.ChangedCount == 1 ? "" : "s").
+                @Model.Decline.UnresolvedCount remain unresolved.
+            </div>
+        </div>
+    }
+
+    @if (Model.IsAwaitingCustomerReview)
+    {
+        <div class="info-banner">This checklist has been sent to the customer and is awaiting their review.</div>
+    }
+    else if (Model.IsAwaitingPmApproval)
+    {
+        <div class="info-banner">The customer has accepted and signed. This project is awaiting Project Manager approval.</div>
+    }
+    else
+    {
+        <div class="action-row">
+            @if (Model.CanStartFirstAttempt)
+            {
+                <form asp-controller="Consultant" asp-action="StartAttempt" method="post">
+                    <input type="hidden" name="projectId" value="@Model.ProjectId" />
+                    <button type="submit" class="btn-primary-lg">Start Checklist</button>
+                </form>
+            }
+            @if (Model.CanContinueChecklist)
+            {
+                <a asp-controller="Consultant" asp-action="Attempt" asp-route-id="@Model.CurrentAttemptId" class="btn-primary-lg">Continue to Checklist</a>
+
+                @if (Model.CanSendToCustomer)
+                {
+                    <form asp-controller="Consultant" asp-action="SubmitForReview" method="post">
+                        <input type="hidden" name="attemptId" value="@Model.CurrentAttemptId" />
+                        <button type="submit" class="btn-secondary-lg">Send to Customer</button>
+                    </form>
+                }
+                else
+                {
+                    <span class="btn-disabled-lg">Send to Customer</span>
+                }
+            }
+            @if (Model.CanSignAsConsultant)
+            {
+                <a asp-controller="Consultant" asp-action="Attempt" asp-route-id="@Model.CurrentAttemptId" class="btn-primary-lg">Sign &amp; Continue</a>
+            }
+            @if (Model.IsCompleted)
+            {
+                <a asp-controller="Consultant" asp-action="Attempt" asp-route-id="@Model.CurrentAttemptId" class="btn-primary-lg">View Certificate</a>
+            }
+        </div>
+    }
+
+    <div class="activity-section">
+        <h2>Activity</h2>
+        <ul class="activity-timeline">
+            @foreach (var item in Model.Activity)
+            {
+                <li class="@(item.IsLatest ? "latest" : "")">
+                    <div class="activity-title">@item.Title</div>
+                    <div class="activity-meta">@item.ActorName &middot; @item.When.ToString("MMM d, yyyy, h:mm tt")</div>
+                </li>
+            }
+        </ul>
+    </div>
+</div>
